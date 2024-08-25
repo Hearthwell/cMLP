@@ -12,7 +12,7 @@ struct Layer{
 struct mlp{
     struct mlp_matrix input;
     unsigned int input_size;
-    struct LinkedList layers;
+    struct Vector layers;
 };
 
 struct mlp mlp_init(unsigned int input_size);
