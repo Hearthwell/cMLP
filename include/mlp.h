@@ -4,7 +4,7 @@
 #include "common.h"
 #include "matrix.h"
 
-struct layer{
+struct Layer{
     struct mlp_matrix weights;
     struct mlp_matrix bias;
 };  
@@ -12,7 +12,7 @@ struct layer{
 struct mlp{
     struct mlp_matrix input;
     unsigned int input_size;
-    struct linked_list layers;
+    struct LinkedList layers;
 };
 
 struct mlp mlp_init(unsigned int input_size);

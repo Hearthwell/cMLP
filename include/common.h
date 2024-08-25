@@ -1,21 +1,21 @@
 #ifndef MLP_COMMON_H
 #define MLP_COMMON_H
 
-struct node{
+struct Node{
     void *data;
-    struct node *next;
+    struct Node *next;
 };
 
-struct linked_list{
-    struct node *first;
-    struct node *last;
+struct LinkedList{
+    struct Node *first;
+    struct Node *last;
     unsigned int length;
 };
 
-struct linked_list linked_list_init();
-void linked_list_free(struct linked_list *list);
+struct LinkedList linked_list_init();
+void linked_list_free(struct LinkedList *list);
 
-struct node* linked_list_get_next(const struct linked_list *list, struct node *node);
-void linked_list_add(struct linked_list *list, void *element);
+struct Node* linked_list_get_next(const struct LinkedList *list, struct Node *node);
+void linked_list_add(struct LinkedList *list, void *element);
 
 #endif //MLP_COMMON_H

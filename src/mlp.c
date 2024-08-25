@@ -15,11 +15,11 @@ struct mlp mlp_init(unsigned int input_size){
 
 void mlp_free(struct mlp *mlp){
     mlp_matrix_free(&mlp->input);
-    struct node *node = NULL;
+    struct Node *node = NULL;
     for(unsigned int i = 0; i < mlp->layers.length; i++){
         node = linked_list_get_next(&mlp->layers, node);
         /* THE LAYER'S POINTER WILL BE FREED WITH THE LINKED LIST */
-        struct layer *current = (struct layer *)node->data;
+        struct Layer *current = (struct Layer *)node->data;
         mlp_matrix_free(&current->weights);
         mlp_matrix_free(&current->bias);
     }
@@ -27,24 +27,25 @@ void mlp_free(struct mlp *mlp){
 }
 
 void mlp_add_layer(struct mlp *mlp, unsigned int width){
-    struct layer *current = malloc(sizeof(struct layer));
+    struct Layer *current = malloc(sizeof(struct Layer));
     unsigned int previous_size = mlp->input_size;
     if(mlp->layers.length > 0){
-        const struct layer *previous = (struct layer *) ((struct node*)mlp->layers.last)->data;
+        const struct Layer *previous = (struct Layer *) ((struct Node*)mlp->layers.last)->data;
         previous_size = previous->weights.shape[0];
     } 
     mlp_matrix_init(&current->weights, width, previous_size);
-    mlp_matrix_init(&current->bias, width, 1);
     mlp_matrix_randomize(&current->weights);
+    mlp_matrix_init(&current->bias, width, 1);
+    mlp_matrix_fill(&current->bias, 0);
     linked_list_add(&mlp->layers, current);
 }
 
 struct mlp_matrix mlp_invoke(struct mlp *mlp){
     struct mlp_matrix matrix = mlp_matrix_copy(&mlp->input);
-    struct node *current_node = NULL;
+    struct Node *current_node = NULL;
     for(unsigned int i = 0; i < mlp->layers.length; i++){
         current_node = linked_list_get_next(&mlp->layers, current_node);
-        struct layer *layer = (struct layer*)current_node->data;
+        struct Layer *layer = (struct Layer*)current_node->data;
         mlp_matrix_matmult(&layer->weights, &matrix, &matrix);
         mlp_matrix_add(&matrix, &layer->bias, &matrix);
     }
@@ -52,14 +53,14 @@ struct mlp_matrix mlp_invoke(struct mlp *mlp){
 }
 
 void mlp_print(const struct mlp *mlp){
-    struct node *current = linked_list_get_next(&mlp->layers, NULL);
+    struct Node *current = linked_list_get_next(&mlp->layers, NULL);
     printf("(%d, %d) -> ", mlp->input_size, 1);
     for(unsigned int i = 0; i < mlp->layers.length; i++){
-        struct mlp_matrix matrix = ((struct layer*)current->data)->weights;
+        struct mlp_matrix matrix = ((struct Layer*)current->data)->weights;
         printf("(%d, %d) -> ", matrix.shape[0], matrix.shape[1]);
         current = linked_list_get_next(&mlp->layers, current);
     }
-    struct mlp_matrix tail = ((struct layer*)mlp->layers.last->data)->weights;
+    struct mlp_matrix tail = ((struct Layer*)mlp->layers.last->data)->weights;
     printf("(%d, %d) -> ", tail.shape[0], 1);
     printf(" END\n");
 }
