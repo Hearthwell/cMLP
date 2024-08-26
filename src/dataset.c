@@ -48,7 +48,6 @@ static struct DatasetItem mnist_get_element(const struct Dataset *dataset, unsig
     filename[sizeof(filename) - 1] = '\0';
     int x, y, channel;
     unsigned char *data = stbi_load(filename, &x, &y, &channel, 0);
-    printf("IMAGE DIMS: %d, %d, %d\n", x, y, channel);
     mlp_matrix_init(&item.input, x * y, 1);
     for(int i = 0; i < x * y; i++)
         item.input.values[i] = (float)data[i] / 255.0f;
@@ -73,7 +72,7 @@ struct Dataset mlp_dataset_mnist_init(const char *path){
         current_path[path_length + 1] = (char)('0' + i);
         current_path[path_length + 2] = '\0';
         DIR *dir = opendir(current_path);
-        assert(dir != NULL);
+        if(dir == NULL) continue;
         struct dirent *current;
         while((current = readdir(dir)) != NULL){
             if(current->d_type != DT_REG) continue;
@@ -85,6 +84,8 @@ struct Dataset mlp_dataset_mnist_init(const char *path){
         }
         closedir(dir);
     }
+    if(mnist_metadata->entries.length == 0)
+        printf("EMPTY DATASET, MAYBE CHECK PATH\n");
     return (struct Dataset){.get_length = mnist_get_length, .get_element = mnist_get_element, .data = mnist_metadata};
 }
 
