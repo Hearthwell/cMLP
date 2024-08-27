@@ -28,6 +28,7 @@ void mlp_matrix_fill(struct mlp_matrix *matrix, float value){
 }
 
 void mlp_matrix_matmult(const struct mlp_matrix *left, const struct mlp_matrix *right, struct mlp_matrix *out){
+    /* CANNOT HAVE SAME OPTIMIZATION AS WITH ADD, BECAUSE  */
     assert(left->shape[1] == right->shape[0]);
     assert(left->values && right->values);
     const unsigned int output_size = out->shape[0] * out->shape[1];
@@ -56,10 +57,14 @@ void mlp_matrix_matmult(const struct mlp_matrix *left, const struct mlp_matrix *
 
 void mlp_matrix_add(const struct mlp_matrix *left, const struct mlp_matrix *right, struct mlp_matrix *out){
     /* CHECK IF BOTH MATRICES ARE BROADCASTABLE */
+    /* RIGHT MATRIX CANNOT BE SMALLER THAN LEFT */
+    /* ONLY RIGHT MATRIX CAN HAVE ITS VALUES READ MORE THAN ONCE */
+    /* SO ONLY MAKE A COPY OF MATRIX IF OUT AND RIGHT ARE EQUAL */
+    /* OTHERWISE, SAFE TO JUST REUSE LEFT SINCE EACH VALUE CAN ONLY BE READ ONCE */
     assert(left->shape[1] == right->shape[1] || right->shape[1] == 1);
     assert(left->shape[0] == right->shape[0] || right->shape[0] == 1);
     void *cleanup = NULL;
-    if(left == out || right == out) cleanup = out->values;
+    if(right == out) cleanup = out->values;
     struct mlp_matrix matrix = *out;
     const unsigned int required_size = left->shape[0] * left->shape[1];
     const unsigned int current_size = matrix.shape[0] * matrix.shape[1]; 
@@ -75,6 +80,21 @@ void mlp_matrix_add(const struct mlp_matrix *left, const struct mlp_matrix *righ
         }
     }
     memcpy(out, &matrix, sizeof(struct mlp_matrix));
+    if(cleanup) free(cleanup);
+}
+
+void mlp_matrix_scale(const struct mlp_matrix *matrix, float scale, struct mlp_matrix *out){
+    assert(matrix->values);
+    const unsigned int required_shape = matrix->shape[0] * matrix->shape[1];
+    const unsigned int previous_shape = out->shape[0] * out->shape[1];
+    memcpy(out->shape, matrix->shape, sizeof(unsigned int) * MAX_NUM_DIM);
+    void *cleanup = NULL;
+    if(previous_shape < required_shape){
+        cleanup = out->values;
+        out->values = malloc(required_shape * sizeof(float));
+    }
+    for(unsigned int i = 0; i < required_shape; i++)
+        out->values[i] = matrix->values[i] * scale;
     if(cleanup) free(cleanup);
 }
 

@@ -35,7 +35,7 @@ static unsigned int mnist_get_length(const struct Dataset *dataset){
 
 static struct DatasetItem mnist_get_element(const struct Dataset *dataset, unsigned int idx){
     const struct MnistMetaData *mnist_metadata = (struct MnistMetaData *)dataset->data;
-    const struct MnistEntry *entry = (struct MnistEntry *)(((struct MnistMetaData *)dataset->data)->entries.data[idx]);
+    const struct MnistEntry *entry = (struct MnistEntry *)(mnist_metadata->entries.data[idx]);
     struct DatasetItem item = {0};
     const unsigned int base_path_len = strlen(mnist_metadata->path);
     const unsigned int img_name_len = strlen(entry->image_name);
@@ -61,7 +61,7 @@ static struct DatasetItem mnist_get_element(const struct Dataset *dataset, unsig
 struct Dataset mlp_dataset_mnist_init(const char *path){
     assert(path != NULL);
     struct MnistMetaData *mnist_metadata = malloc(sizeof(struct MnistMetaData));
-    mnist_metadata->path = malloc(strlen(path));
+    mnist_metadata->path = malloc(strlen(path) + 1);
     strcpy(mnist_metadata->path, path);
     mnist_metadata->entries = vector_init();
     const unsigned int path_length = strlen(path);
@@ -78,7 +78,7 @@ struct Dataset mlp_dataset_mnist_init(const char *path){
             if(current->d_type != DT_REG) continue;
             struct MnistEntry *entry = malloc(sizeof(struct MnistEntry));
             entry->digit = i;
-            entry->image_name = malloc(strlen(current->d_name));
+            entry->image_name = malloc(strlen(current->d_name) + 1);
             strcpy(entry->image_name, current->d_name);
             vector_add(&mnist_metadata->entries, entry);
         }
