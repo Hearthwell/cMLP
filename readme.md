@@ -33,8 +33,9 @@ mlp_free(&network);
 # RoadMap
 - [x] Support Network Inference
 - [x] Support Network Training (gradient descent)
+- [ ] Support Batching while Training with DataLoader Wrapper 
 - [ ] Support Backpropagation for faster training
 - [ ] Support Multi-threading for faster training
-- [ ] Support For Loading/Saving Network From/To File
+- [x] Support For Loading/Saving Network From/To File
 - [ ] Support Export To Tflite
 - [ ] Support Export To Onnx

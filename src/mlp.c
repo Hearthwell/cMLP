@@ -2,10 +2,14 @@
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <stdint.h>
 
 #include "mlp.h"
 #include "matrix.h"
 
+#define MLP_HEADER_TOKEN 0xadaddada
 #define PARTIAL_DERIV_DELTA_H 0.0001
 #define DEFAULT_LEARNING_RATE 0.001
 
@@ -155,6 +159,56 @@ void mlp_train(struct mlp *mlp, const struct Dataset *training, const struct Dat
         }
         printf("Average Loss For Epoch: %f\n", total_loss / training->get_length(training));
     }
+}
+
+#define WRITE_HELPER(_fd, _dst, _size) assert(write(_fd, _dst, _size) == (int)_size)
+void mlp_dump(const struct mlp *mlp, const char *path){
+    assert(mlp->layers.length > 0);
+    int fd = open(path, O_WRONLY | O_CREAT, 0777);
+    assert(fd >= 0);
+    WRITE_HELPER(fd, (uint32_t[]){MLP_HEADER_TOKEN}, sizeof(uint32_t));
+    WRITE_HELPER(fd, (uint32_t[]){mlp->layers.length}, sizeof(uint32_t));
+    for(unsigned int i = 0; i < mlp->layers.length; i++){
+        const struct Layer *current = (const struct Layer *)mlp->layers.data[i];
+        WRITE_HELPER(fd, (uint32_t*)current->weights.shape, MAX_NUM_DIM * sizeof(uint32_t));
+        const unsigned int weight_count = current->weights.shape[0] * current->weights.shape[1];
+        WRITE_HELPER(fd, current->weights.values, sizeof(float) * weight_count);
+        /* WRITE BIAS */
+        WRITE_HELPER(fd, (uint32_t*)current->bias.shape, MAX_NUM_DIM * sizeof(uint32_t));
+        const unsigned int bias_count = current->bias.shape[0] * current->bias.shape[1];
+        WRITE_HELPER(fd, current->bias.values, sizeof(float) * bias_count);
+    }
+    close(fd);
+}
+
+#define READ_HELPER(_fd, _dst, _size) assert(read(_fd, _dst, _size) == _size)
+struct mlp mlp_load(const char *path){
+    int fd = open(path, O_RDONLY);
+    assert(fd > 0);
+    struct mlp network = mlp_init(0);
+    uint32_t buffer = 0;
+    READ_HELPER(fd, &buffer, sizeof(uint32_t));
+    assert(buffer == MLP_HEADER_TOKEN);
+    unsigned int num_layers = 0;
+    READ_HELPER(fd, &num_layers, sizeof(uint32_t));
+    for(unsigned int i = 0; i < num_layers; i++){
+        struct Layer *current = malloc(sizeof(struct Layer));
+        READ_HELPER(fd, current->weights.shape, MAX_NUM_DIM * sizeof(uint32_t));
+        const unsigned int required_size = sizeof(float) * current->weights.shape[0] * current->weights.shape[1];
+        current->weights.values = malloc(required_size);
+        READ_HELPER(fd, current->weights.values, required_size);
+        READ_HELPER(fd, current->bias.shape, MAX_NUM_DIM * sizeof(uint32_t));
+        const unsigned int bias_size = sizeof(float) * current->bias.shape[0] * current->bias.shape[1];
+        current->bias.values = malloc(bias_size);
+        READ_HELPER(fd, current->bias.values, bias_size);
+        mlp_matrix_init(&current->output, current->weights.shape[0], 1); 
+        vector_add(&network.layers, current);
+    }
+    close(fd);
+    network.input_size = ((struct Layer*)network.layers.data[0])->weights.shape[1];
+    mlp_matrix_free(&network.input);
+    mlp_matrix_init(&network.input, network.input_size, 1); 
+    return network;
 }
 
 struct Optimizer mlp_default_optimizer(){
