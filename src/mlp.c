@@ -97,6 +97,18 @@ void mlp_gradient_descent_step(struct mlp *mlp, struct DatasetItem item, struct 
             /* RESET WEIGHT TO ORIGINAL VALUE */
             current->weights.values[j] = previous;
         }
+        /* TODO, SAME COMPUTATION AS WITH THE WEIGHTS, SO COMBINE OR MAKE INTO SEPERATE FUNCTION */
+        const unsigned int bias_count = current->bias.shape[0] * current->bias.shape[1];
+        for(unsigned int j = 0; j < bias_count; j++){
+            const float previous = current->bias.values[j];
+            current->bias.values[j] += PARTIAL_DERIV_DELTA_H;
+            /* RUN OUTPUT COMPUTATION */
+            struct mlp_matrix output = mlp_invoke_ext(mlp, idx);
+            /* COMPUTE CURRENT LOSS */
+            float current_loss = optimizer.loss(output, item.expected);
+            gradient_layer->bias.values[j] = (current_loss - base_loss) / PARTIAL_DERIV_DELTA_H;
+            current->bias.values[j] = previous;
+        }
     }
     /* SCALE AND GO IN OPPOSITE GRADIENT DIRECTION TO PARAMETERS */
     for(unsigned int i = 0; i < mlp->layers.length; i++){
