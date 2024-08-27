@@ -30,7 +30,7 @@ void mlp_add_layer(struct mlp *mlp, unsigned int width);
 
 struct mlp_matrix mlp_invoke(struct mlp *mlp);
 void mlp_gradient_descent_step(struct mlp *mlp, struct DatasetItem item, struct Optimizer optimizer);
-void mlp_train(struct mlp *mlp, const struct Dataset dataset, struct Optimizer optimizer, unsigned int epochs);
+void mlp_train(struct mlp *mlp, const struct Dataset *training, const struct Dataset *validation, struct Optimizer optimizer, unsigned int epochs);
 
 struct Optimizer mlp_default_optimizer();
 

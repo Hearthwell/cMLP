@@ -129,17 +129,31 @@ void mlp_gradient_descent_step(struct mlp *mlp, struct DatasetItem item, struct 
     vector_free(&gradient);
 }
 
-void mlp_train(struct mlp *mlp, const struct Dataset dataset, struct Optimizer optimizer, unsigned int epochs){
+void mlp_train(struct mlp *mlp, const struct Dataset *training, const struct Dataset *validation, struct Optimizer optimizer, unsigned int epochs){
     for(unsigned int k = 0; k < epochs; k++){
-        const unsigned int length = dataset.get_length(&dataset); 
+        const unsigned int length = training->get_length(training); 
         for(unsigned int i = 0; i < length; i++){
-            printf("\rRunning epoch: %d, [%d / %d]", k, i, length);
+            printf("\rRunning Training, epoch: %d, [%d / %d]", k, i, length);
             fflush(stdout);
-            struct DatasetItem item = dataset.get_element(&dataset, i);
+            struct DatasetItem item = training->get_element(training, i);
             mlp_gradient_descent_step(mlp, item, optimizer);
             mlp_dataset_element_free(item);
         }
-        /* TODO, ADD EVALUATION METRICS */
+        if(!validation) continue;
+        const unsigned int validation_length = validation->get_length(validation);
+        float total_loss = 0.f;
+        for(unsigned int i = 0; i < validation_length; i++){
+            printf("\rRunning Validation, epoch: %d, [%d / %d]", k, i, length);
+            fflush(stdout);
+            struct DatasetItem item = training->get_element(training, i);
+            /* SETUP INPUT */
+            for(unsigned int k = 0; k < mlp->input.shape[0] * mlp->input.shape[1]; k++)
+                mlp->input.values[k] = item.input.values[k];
+            struct mlp_matrix output = mlp_invoke(mlp);
+            total_loss += optimizer.loss(output, item.expected);
+            mlp_dataset_element_free(item);
+        }
+        printf("Average Loss For Epoch: %f\n", total_loss / training->get_length(training));
     }
 }
 
