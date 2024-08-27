@@ -27,9 +27,13 @@ struct mlp_matrix output = mlp_invoke(&network);
 mlp_free(&network);
 ```
 
+## Dataset
+### You can implement Your own Dataset By Providing a struct Dataset object with the correct get_element and get_length Implementation, See the Mnist Dataset Implementation For an Example
+
 # RoadMap
 - [x] Support Network Inference
-- [x] Support Network Training
+- [x] Support Network Training (gradient descent)
+- [ ] Support Backpropagation for faster training
 - [ ] Support For Loading/Saving Network From/To File
 - [ ] Support Export To Tflite
 - [ ] Support Export To Onnx
