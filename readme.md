@@ -34,6 +34,7 @@ mlp_free(&network);
 - [x] Support Network Inference
 - [x] Support Network Training (gradient descent)
 - [ ] Support Backpropagation for faster training
+- [ ] Support Multi-threading for faster training
 - [ ] Support For Loading/Saving Network From/To File
 - [ ] Support Export To Tflite
 - [ ] Support Export To Onnx
