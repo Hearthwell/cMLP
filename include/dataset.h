@@ -11,10 +11,15 @@ struct DatasetItem{
 struct Dataset{
     unsigned int (*get_length)(const struct Dataset *dataset);
     struct DatasetItem (*get_element)(const struct Dataset *dataset, unsigned int idx);
+    void (*free)(struct Dataset *dataset);
     void *data;
 };
 
 void mlp_dataset_element_free(struct DatasetItem item);
+
+/* DATALOADER ABSTRACTION */
+struct Dataset mlp_dataloader_init(struct Dataset *dataset, unsigned int batch_size);
+void mlp_dataloader_free(struct Dataset *dataset);
 
 /* MNIST DIGIT-RECOGNITION DATASET IMPLEMENTATION */
 struct Dataset mlp_dataset_mnist_init(const char *path);

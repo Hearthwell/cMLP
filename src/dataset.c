@@ -19,6 +19,52 @@ void mlp_dataset_element_free(struct DatasetItem item){
     mlp_matrix_free(&item.input);
 }
 
+struct DataLoaderMetaData{
+    struct Dataset *dataset;
+    unsigned int batch_size;
+};
+
+static unsigned int mlp_dataloader_get_length(const struct Dataset *dataset){
+    struct DataLoaderMetaData *dataloader = (struct DataLoaderMetaData *)dataset->data;
+    return dataloader->dataset->get_length(dataloader->dataset) / dataloader->batch_size;
+}
+
+static struct DatasetItem mlp_dataloader_get_element(const struct Dataset *dataloader, unsigned int idx){
+    struct DataLoaderMetaData *dataloader_metadata = (struct DataLoaderMetaData *)dataloader->data;
+    assert(mlp_dataloader_get_length(dataloader) > idx);
+    const struct Dataset *dataset = dataloader_metadata->dataset;
+    struct DatasetItem sample = dataset->get_element(dataset, 0);
+    /* EXPECT ALL DATATSET INPUTS TO BE IN THE SHAPE [N, 1] */
+    struct DatasetItem item = {0};
+    mlp_matrix_init(&item.input, sample.input.shape[0], dataloader_metadata->batch_size);  
+    mlp_matrix_init(&item.expected, sample.expected.shape[0], dataloader_metadata->batch_size);
+    mlp_dataset_element_free(sample); 
+    for(unsigned int i = 0; i < dataloader_metadata->batch_size; i++){
+        struct DatasetItem current = dataset->get_element(dataset, i);
+        for(unsigned int k = 0; k < item.input.shape[0]; k++)
+            item.input.values[i + k * dataloader_metadata->batch_size] = current.input.values[k];
+        for(unsigned int k = 0; k < item.expected.shape[0]; k++)
+            item.expected.values[i + k * dataloader_metadata->batch_size] = current.expected.values[k];
+        mlp_dataset_element_free(current); 
+    }
+    return item;
+}
+
+struct Dataset mlp_dataloader_init(struct Dataset *dataset, unsigned int batch_size){
+    struct DataLoaderMetaData *metadata = malloc(sizeof(struct DataLoaderMetaData));
+    metadata->dataset = dataset;
+    metadata->batch_size = batch_size;
+    struct Dataset dataloader = {.get_length = mlp_dataloader_get_length, .get_element = mlp_dataloader_get_element, .free = mlp_dataloader_free, .data = metadata};
+    return dataloader;
+}
+
+void mlp_dataloader_free(struct Dataset *dataloader){
+    struct DataLoaderMetaData *metadata = (struct DataLoaderMetaData *)dataloader->data;
+    if(metadata->dataset->free)
+        metadata->dataset->free(metadata->dataset);
+    free(metadata);
+}
+
 /* MNIST DATASET IMPLEMENTATION */
 struct MnistEntry{
     char *image_name;
@@ -86,7 +132,7 @@ struct Dataset mlp_dataset_mnist_init(const char *path){
     }
     if(mnist_metadata->entries.length == 0)
         printf("EMPTY DATASET, MAYBE CHECK PATH\n");
-    return (struct Dataset){.get_length = mnist_get_length, .get_element = mnist_get_element, .data = mnist_metadata};
+    return (struct Dataset){.get_length = mnist_get_length, .get_element = mnist_get_element, .free = mlp_dataset_mnist_free, .data = mnist_metadata};
 }
 
 void mlp_dataset_mnist_free(struct Dataset *dataset){
