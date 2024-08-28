@@ -19,7 +19,7 @@ void mlp_matrix_free(struct mlp_matrix *matrix){
 
 void mlp_matrix_randomize(struct mlp_matrix *matrix){
     for(unsigned int i = 0; i < matrix->shape[0] * matrix->shape[1]; i++)
-        matrix->values[i] = (float)rand() / RAND_MAX;
+        matrix->values[i] = ((float)rand() * 2.f / RAND_MAX) - 1.f;
 }
 
 void mlp_matrix_fill(struct mlp_matrix *matrix, float value){

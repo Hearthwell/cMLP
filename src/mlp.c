@@ -5,18 +5,20 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdint.h>
+#include <math.h>
 
 #include "mlp.h"
 #include "matrix.h"
 
 #define MLP_HEADER_TOKEN 0xadaddada
-#define PARTIAL_DERIV_DELTA_H 0.0001
-#define DEFAULT_LEARNING_RATE 0.001
+#define EPSILON 0.0000001f
+#define PARTIAL_DERIV_DELTA_H 0.0001f
+#define DEFAULT_LEARNING_RATE 0.01f
 
 struct mlp mlp_init(unsigned int input_size){
     struct mlp mlp = {.layers = vector_init()};
     mlp_matrix_init(&mlp.input, input_size, 1);
-    mlp_matrix_randomize(&mlp.input);
+    mlp_matrix_fill(&mlp.input, 0.f);
     mlp.input_size = input_size;
     return mlp;
 }
@@ -43,7 +45,7 @@ void mlp_add_layer(struct mlp *mlp, unsigned int width){
     mlp_matrix_init(&current->weights, width, previous_size);
     mlp_matrix_randomize(&current->weights);
     mlp_matrix_init(&current->bias, width, 1);
-    mlp_matrix_fill(&current->bias, 0);
+    mlp_matrix_randomize(&current->bias);
     /* TO CACHE PREVIOUS LAYER OUTPUTS WHEN TRAINING */
     mlp_matrix_init(&current->output, width, 1);
     vector_add(&mlp->layers, current);
@@ -68,7 +70,7 @@ struct mlp_matrix mlp_invoke(struct mlp *mlp){
 
 /* SINGLE ITERATION OF GRADIENT DESCENT FOR A PARTICULAR DATASET ITEM */
 /* SHOULD RUN THIS ON ENTIRE DATASET TO ACCOMPLISH AN EPOCH */
-void mlp_gradient_descent_step(struct mlp *mlp, struct DatasetItem item, struct Optimizer optimizer){
+float mlp_gradient_descent_step(struct mlp *mlp, struct DatasetItem item, struct Optimizer optimizer){
     /* COMPUTE BASELINE LOSS */
     memcpy(mlp->input.values, item.input.values, mlp->input.shape[0] * mlp->input.shape[1] * sizeof(float));
     struct mlp_matrix output = mlp_invoke(mlp);
@@ -131,17 +133,19 @@ void mlp_gradient_descent_step(struct mlp *mlp, struct DatasetItem item, struct 
         free(current);
     }
     vector_free(&gradient);
+    output = mlp_invoke(mlp);
+    return optimizer.loss(output, item.expected);
 }
 
 void mlp_train(struct mlp *mlp, const struct Dataset *training, const struct Dataset *validation, struct Optimizer optimizer, unsigned int epochs){
     for(unsigned int k = 0; k < epochs; k++){
         const unsigned int length = training->get_length(training); 
         for(unsigned int i = 0; i < length; i++){
-            printf("\rRunning Training, epoch: %d, [%d / %d]", k, i, length);
-            fflush(stdout);
             struct DatasetItem item = training->get_element(training, i);
-            mlp_gradient_descent_step(mlp, item, optimizer);
+            float loss = mlp_gradient_descent_step(mlp, item, optimizer);
             mlp_dataset_element_free(item);
+            printf("\nTraining, epoch: %d, [%d / %d], Loss: %f", k, i, length, loss);
+            fflush(stdout);
         }
         if(!validation) continue;
         const unsigned int validation_length = validation->get_length(validation);
@@ -157,7 +161,9 @@ void mlp_train(struct mlp *mlp, const struct Dataset *training, const struct Dat
             total_loss += optimizer.loss(output, item.expected);
             mlp_dataset_element_free(item);
         }
+        printf("\n===============\n");
         printf("Average Loss For Epoch: %f\n", total_loss / training->get_length(training));
+        printf("===============\n");
     }
 }
 
@@ -212,7 +218,7 @@ struct mlp mlp_load(const char *path){
 }
 
 struct Optimizer mlp_default_optimizer(){
-    return (struct Optimizer) {.loss = mlp_loss_quadratic, .learning_rate = DEFAULT_LEARNING_RATE};
+    return (struct Optimizer) {.loss = mlp_loss_abs, .learning_rate = DEFAULT_LEARNING_RATE};
 }
 
 void mlp_print(const struct mlp *mlp){
@@ -226,11 +232,25 @@ void mlp_print(const struct mlp *mlp){
     printf(" END\n");
 }
 
+/* ONLY MAKES SENSE WHEN THE OUTPUT VALUES ARE ALSO IN [0, 1] RANGE */
 float mlp_loss_cross_entropy(const struct mlp_matrix output, const struct mlp_matrix expected){
-    assert("TODO, IMPLEMENT" == NULL);
-    (void)output;
-    (void)expected;
-    return 0.f;
+    float loss = 0.0f;
+    /* BATCH DIM */
+    for(unsigned int i = 0; i < output.shape[1]; i++){
+        for(unsigned int j = 0; j < output.shape[0]; j++){
+            const float log_offset = (output.values[i + j * output.shape[1]] > EPSILON) ? logf(output.values[i + j * output.shape[1]]) : 1.f;
+            loss += expected.values[i + j * expected.shape[1]] * log_offset;
+        }
+    }
+    return loss;
+}
+
+float mlp_loss_abs(const struct mlp_matrix output, const struct mlp_matrix expected){
+    float sum = 0.f;
+    for(unsigned int i = 0; i < output.shape[0] * output.shape[1]; i++){
+        sum += fabs(output.values[i] - expected.values[i]);
+    }
+    return sum;
 }
 
 float mlp_loss_quadratic(const struct mlp_matrix output, const struct mlp_matrix expected){
