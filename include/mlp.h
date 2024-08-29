@@ -31,6 +31,7 @@ void mlp_add_layer(struct mlp *mlp, unsigned int width);
 struct mlp_matrix mlp_invoke(struct mlp *mlp);
 /* RETURNS THE LOSS AFTER THE STEP */
 float mlp_gradient_descent_step(struct mlp *mlp, struct DatasetItem item, struct Optimizer optimizer);
+void mlp_train_threaded(struct mlp *mlp, const struct Dataset *training, const struct Dataset *validation, struct Optimizer optimizer, unsigned int epochs, unsigned int num_threads);
 void mlp_train(struct mlp *mlp, const struct Dataset *training, const struct Dataset *validation, struct Optimizer optimizer, unsigned int epochs);
 
 void mlp_dump(const struct mlp *mlp, const char *path);

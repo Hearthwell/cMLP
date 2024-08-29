@@ -98,11 +98,20 @@ void mlp_matrix_scale(const struct mlp_matrix *matrix, float scale, struct mlp_m
     if(cleanup) free(cleanup);
 }
 
-struct mlp_matrix mlp_matrix_copy(const struct mlp_matrix *matrix){
-    struct mlp_matrix copy;
-    mlp_matrix_init(&copy, matrix->shape[0], matrix->shape[1]);
+struct mlp_matrix mlp_matrix_copy(const struct mlp_matrix *matrix, struct mlp_matrix *output){
+    if(matrix == output) return *matrix;
+    const unsigned int required_size = matrix->shape[0] * matrix->shape[1]; 
+    struct mlp_matrix copy = {0};
+    if(output) copy = *output;
+    const unsigned int current_size = copy.shape[0] * copy.shape[1];
+    memcpy(copy.shape, matrix->shape, MAX_NUM_DIM * sizeof(unsigned int));
+    if(current_size < required_size){
+        if(copy.values) free(copy.values);
+        copy.values = malloc(sizeof(float) * required_size);
+    }
     for(unsigned int i = 0; i < matrix->shape[0] * matrix->shape[1]; i++)
         copy.values[i] = matrix->values[i];
+    if(output) memcpy(output, &copy, sizeof(struct mlp_matrix));
     return copy;
 }
 

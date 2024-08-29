@@ -17,7 +17,8 @@ void mlp_matrix_fill(struct mlp_matrix *matrix, float value);
 void mlp_matrix_matmult(const struct mlp_matrix *left, const struct mlp_matrix *right, struct mlp_matrix *out);
 void mlp_matrix_add(const struct mlp_matrix *left, const struct mlp_matrix *right, struct mlp_matrix *out);
 void mlp_matrix_scale(const struct mlp_matrix *matrix, float scale, struct mlp_matrix *out);
-struct mlp_matrix mlp_matrix_copy(const struct mlp_matrix *matrix);
+/* PASS NULL TO OUTPUT IF YOU DONT WANT TO PROVIDE CONTAINER */
+struct mlp_matrix mlp_matrix_copy(const struct mlp_matrix *matrix, struct mlp_matrix *output);
 
 void mlp_matrix_print(const struct mlp_matrix *matrix);
 
